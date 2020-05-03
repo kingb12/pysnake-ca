@@ -3,7 +3,7 @@ import unittest
 import numpy as np
 import torch
 
-from ca.proto_ca import CAProtoModel
+from torch.ca import CAProtoModel
 
 
 class ProtoCaTest(unittest.TestCase):

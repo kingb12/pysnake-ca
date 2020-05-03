@@ -30,16 +30,6 @@ class CAProtoModel(nn.Module):
         """
         return self.perception_filter(x)
 
-    def update(self, x: torch.Tensor) -> torch.Tensor:
-        """
-        Apply a single update to the past grid state (x) to get the next grid state (x + 1)
-        :param x: grid
-        :return: updated grid
-        """
-        dx = self.model(x)
-        x += dx
-        return x
-
     @staticmethod
     def _construct_perception_kernel(channel_n: int) -> nn.Module:
         """
@@ -100,16 +90,16 @@ class CAProtoModel(nn.Module):
         # TODO how does above update rule not cross-reference data from multiple perception vectors? is this in the
         #  1x1 conv definition?
 
-    def forward(self, *x: Any, **kwargs: Any):
+    def forward(self, x: torch.Tensor, **kwargs: Any):
         """
         First, apply perception to each cell state. Then apply update.
         :param x:
         :param kwargs:
         :return:
         """
-        x: torch.Tensor
-        perceived = self.perceive(x)
-        return self.update(perceived)
+        perceived = self.perceive(x)  # N(3 * C)HW
+        dx = self.model(perceived)  # NCHW
+        return x + dx  # updated board
 
 
 if __name__ == '__main__':
