@@ -10,6 +10,7 @@ the rate of change: the automata can only move one step at a time in adhering to
 """
 import io
 import json
+from typing import Tuple
 
 import PIL.Image
 import PIL.ImageDraw
@@ -56,7 +57,12 @@ def to_rgb(x):
     return 1.0 - a + rgb
 
 
-def get_living_mask(x):
+def get_living_mask(x: tf.Tensor) -> tf.Tensor:
+    """
+    Return a living mask
+    :param x:
+    :return:
+    """
     alpha = x[:, :, :, 3:4]
     return tf.nn.max_pool2d(alpha, 3, [1, 1, 1, 1], 'SAME') > 0.1
 
@@ -88,6 +94,9 @@ class CAProtoModel(tf.keras.Model):
         self.width = width
         self.channel_n = channel_n
         self.fire_rate = fire_rate
+        # Not making this one configurable: without this the update model violates the premise of a cellular automata
+        # and can guide dead cells to spawn valid parts of the expected form
+        self.apply_living_mask: bool = True
 
         # update model: has global awareness of the board and learns an update rule that can be applied to each cell
         self.update_model = self._construct_update_model(self.channel_n)
@@ -131,12 +140,12 @@ class CAProtoModel(tf.keras.Model):
         shape (channel_n * 3, 1, 3, 3) (since each filter is 3 x 3)
         """
         # identifies target cell in 3x3 convolution
-        identify = np.float32([[0, 0, 0], [0, 1, 0], [0, 0, 0]])
+        identify: np.Array = np.float32([[0, 0, 0], [0, 1, 0], [0, 0, 0]])
         # Sobel filters
         sob_x = np.outer([1, 2, 1], [-1, 0, 1]) / 8.0  # Sobel filter
         sob_y = sob_x.T
         # we are shaping these to replace the weights in an Conv2D module: stack in (3, 3, 3) such that you can
-        # index each filter along the last dimmension (e.g. stacked[:, :, 0] == identify)
+        # index each filter along the last dimension (e.g. stacked[:, :, 0] == identify)
         stacked = tf.stack([identify, sob_x, sob_y], -1)
         tf.debugging.assert_near(stacked[:, :, 0], identify)
         # add a dimension at index 2
@@ -144,7 +153,7 @@ class CAProtoModel(tf.keras.Model):
         tf.debugging.assert_near(per_cell_kernel[:, :, 0, 1], sob_x)
         # finally, repeat this channel_n times in the third dimension. this is our # of in channels
         kernel = tf.repeat(per_cell_kernel, channel_n, 2)
-        assert kernel.shape == (3, 3, channel_n, 3)  # (H, W, C, NumFilters)
+        assert kernel.shape == (3, 3, channel_n, 3)  # (H = Height, W = Width, C = NumChannels, NumFilters)
         return kernel
 
     @tf.function
@@ -154,9 +163,14 @@ class CAProtoModel(tf.keras.Model):
         :param x:
         :return:
         """
-        # TODO correct assertion
-        # tf.debugging.assert_shapes([(x, (None, self.height, self.width, self.channel_n))])
+        # x has shape NHWC where N = number of batches,
+        # HW = height/width of the target image (arbitrary w.r.t. the model)
+        # C = number of channels = same as model
+        x_shape: Tuple[float] = x.shape
+        tf.debugging.assert_equal(len(x_shape), 4)
+        tf.debugging.assert_equal(x_shape[-1], self.channel_n) # verify C, the only known value to the model
         y = tf.nn.depthwise_conv2d(x, self.perception_kernel, [1, 1, 1, 1], 'SAME')
+        tf.debugging.assert_shapes([(y, (x_shape[0], x_shape[1], x_shape[2], self.channel_n * 3))])
         return y
 
     @tf.function
@@ -169,12 +183,20 @@ class CAProtoModel(tf.keras.Model):
         :param fire_rate: with what frequency should these updates should actually be applied? (cell-by-cell)
         :return: subsequent board state
         """
-        y = self.perceive(x)
-        dx = self.update_model(y)
+        # calculate a living mask from step n
+        pre_life_mask: tf.Tensor = get_living_mask(x)
+        perceived: tf.Tensor = self.perceive(x)
+        dx: tf.Tensor = self.update_model(perceived)
         if fire_rate is None:
             fire_rate = self.fire_rate
         update_mask = tf.random.uniform(tf.shape(x[:, :, :, :1])) <= fire_rate
         x += dx * tf.cast(update_mask, tf.float32)
+        # calculate another from step n + 1
+        post_life_mask: tf.Tensor = get_living_mask(x)
+        # to be alive you must be 'alive' in both
+        living_mask: tf.Tensor = pre_life_mask & post_life_mask
+        if self.apply_living_mask:
+            x = x * tf.cast(living_mask, tf.float32)
         return x
 
 
