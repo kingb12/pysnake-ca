@@ -11,15 +11,16 @@ class SamplePool:
     lifecycle
     """
 
-    def __init__(self, *, _parent=None, _parent_idx=None, **slots):
-        self._parent = _parent
-        self._parent_idx = _parent_idx
+    def __init__(self, *, _parent: "SamplePool" = None, _parent_idx: int = None, **slots):
+        self._parent: "SamplePool" = _parent
+        self._parent_idx: int = _parent_idx
+        # slots are just key-value constructor arguments where names are the keys
         self._slot_names = slots.keys()
-        self._size = None
+        self._size: int = -1
         for k, v in slots.items():
-            if self._size is None:
+            if self._size == -1:
                 self._size = len(v)
-            assert self._size == len(v)
+            assert not hasattr(v, '__len__') or self._size == len(v)
             setattr(self, k, np.asarray(v))
 
     # need to quote "SamplePool" b/c it is a forward reference
@@ -29,7 +30,7 @@ class SamplePool:
         :param n: The number (or shape) of samples to draw.
         :return: sample(s) as a new sample pool
         """
-        idx = np.random.choice(self._size, n, False)
+        idx: int = np.random.choice(self._size, n, False)
         batch = {k: getattr(self, k)[idx] for k in self._slot_names}
         batch = SamplePool(**batch, _parent=self, _parent_idx=idx)  # TODO why another pool?
         return batch
@@ -39,6 +40,6 @@ class SamplePool:
 
         :return:
         """
-        # TODO what is this? determine based on calling context
+        # TODO pydoc: this appears to go through and replace everything in the batch with the 'current' results
         for k in self._slot_names:
             getattr(self._parent, k)[self._parent_idx] = getattr(self, k)

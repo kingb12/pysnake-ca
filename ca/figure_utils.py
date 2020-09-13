@@ -25,8 +25,8 @@ def imwrite(f, a, fmt=None):
 
 
 def generate_pool_figures(pool: SamplePool, step_i: int, log_dir: str) -> None:
-    # TODO what is x and how is it set?
-    # TODO what are 72, 49 here?
+    # Q: What is x and how is it set? I believe this is the pool image seed set on SamplePool(x=...)
+    # TODO what are 72, 49 here? We are leaking board size knowledge, we should find a way to variable-ize this
     tiled_pool = tile2d(to_rgb(pool.x))
     fade = np.linspace(1.0, 0.0, 72)
     ones = np.ones(72)
@@ -39,13 +39,16 @@ def generate_pool_figures(pool: SamplePool, step_i: int, log_dir: str) -> None:
 
 def visualize_batch(x0, x, step_i: int, log_dir: str):
     """
+    For each batch, visualize the input/output pairs of this training session. Writes an image to the log directory
+    with a horizontal row of initial states, and below it a horizontal row of the resulting states. For example, the
+    first element in each first row may be the single-pixel, used in some trainings to prevent catastrophic forgetting.
 
-    :param x0:
-    :param x:
-    :param step_i:
+    :param x0: the row of initial board states for this batch, which will be translated to images in row 1
+    :param x: the row of final board states for this batch, which will be translated to images in row 2
+    :param step_i: what training step are we on? Used in file-name for reader convenience
+    :param log_dir: where to save the image file in (will be in [log_dir]/train_log/[the filename].jpg)
     :return:
     """
-    # TODO what it is
     vis0 = np.hstack(to_rgb(x0).numpy())
     vis1 = np.hstack(to_rgb(x).numpy())
     vis = np.vstack([vis0, vis1])
@@ -54,7 +57,7 @@ def visualize_batch(x0, x, step_i: int, log_dir: str):
 
 def plot_loss(loss_log: List[np.ndarray], log_dir: str) -> None:
     """
-    Plot the current loss along with the
+    Plot the current loss
     :param log_dir: Where to save the figure to
     :param loss_log: log of losses
     :return:
@@ -66,7 +69,13 @@ def plot_loss(loss_log: List[np.ndarray], log_dir: str) -> None:
 
 
 def tile2d(a, w=None):
-    # TODO figure this one out, but its just used in figures afaik
+    """
+    Reshapes the input vector into a nice grid shape
+
+    :param a: The thing were tiling
+    :param w: desired width?
+    :return:
+    """
     a = np.asarray(a)
     if w is None:
         w = int(np.ceil(np.sqrt(len(a))))

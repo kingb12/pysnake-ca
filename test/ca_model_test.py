@@ -31,7 +31,7 @@ class CaModelTest(unittest.TestCase):
         tf.debugging.assert_equal(mask, True)
 
         # check update logic
-        board: np.Array = tf.constant([[1, 2, 3, 4],
+        board: np.ndarray = tf.constant([[1, 2, 3, 4],
                                       [0, 5, 0, 0],
                                       [0, 0, 0, 0],
                                       [0, 0, 0, 0]], dtype=tf.float32)

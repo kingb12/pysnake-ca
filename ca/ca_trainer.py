@@ -5,6 +5,7 @@ from typing import List, Callable, Tuple
 
 import numpy as np
 import tensorflow as tf
+from overrides import EnforceOverrides
 
 from ca.ca_model import to_rgba, make_seed, CAProtoModel, export_model, load_image
 from ca.ca_sample_pool import SamplePool
@@ -14,17 +15,20 @@ DEFAULT_LEARNING_RATE = 2e-3
 DEFAULT_POOL_SIZE = 1024
 DEFAULT_BATCH_SIZE = 8
 DEFAULT_LOG_DIRECTORY = "logs/"
+DEFAULT_EPOCHS = 8000
 
 
-class CATrainer:
+class CATrainer(EnforceOverrides):
     """
     Class responsible for training the cellular-automata (holding and applying hyper-parameters, etc.)
     """
 
-    def __init__(self, model: CAProtoModel, target_img: tf.Tensor, target_padding: int = 16,
+    def __init__(self, model: CAProtoModel, target_img: np.ndarray, target_padding: int = 16,
                  learning_rate=DEFAULT_LEARNING_RATE, pool_size=DEFAULT_POOL_SIZE, use_pattern_pool: bool = False,
-                 batch_size: int = DEFAULT_BATCH_SIZE, log_directory: str = DEFAULT_LOG_DIRECTORY):
+                 batch_size: int = DEFAULT_BATCH_SIZE, log_directory: str = DEFAULT_LOG_DIRECTORY,
+                 epochs: int = DEFAULT_EPOCHS):
         # TODO docstring, maybe turn all these parameters into options of some kind
+        self.epochs: int = epochs
         self.pool_size = pool_size
         self.target_padding = target_padding
         self.target_img = target_img
@@ -88,7 +92,7 @@ class CATrainer:
     def train_step(self, x: tf.Tensor) -> Tuple[tf.Tensor, tf.Tensor]:
         iter_n = tf.random.uniform([], 64, 96, tf.int32)
         with tf.GradientTape() as g:
-            for i in tf.range(iter_n):
+            for _ in tf.range(iter_n):
                 x = self.model(x)
             loss = tf.reduce_mean(self.loss_f(x))
         grads = g.gradient(loss, self.model.weights)
@@ -98,25 +102,23 @@ class CATrainer:
 
     def train(self):
         """
-
+        Trains the CAModel for
         :return:
         """
-        for _ in range(8000 + 1):
+        for _ in range(self.epochs + 1):
             batch: SamplePool = None
             if self.use_pattern_pool:
                 batch = self.pool.sample(self.batch_size)
-                x0: np.Array = batch.x
-                # TODO what's going on here? Its also only used in the Persistent and Regenerating experiments
-                # it looks like we find the lowest-loss from the last sample. When we go dynamic we need to know if this
-                # loss mgmt strategy is still viable: we compute the min loss on each of the 8 (batch size) examples and
-                # start with the least-loss example. Will we know of loss can be computed from a single image/state?
-                # are we replacing the lowest/highest loss episode with a new one?
+                x0: np.ndarray = batch.x
+                # This is the sample-pooling strategy implementation: after every episode, we replace our highest-loss
+                # batch with the initial seed.
                 loss_rank = self.loss_f(x0).numpy().argsort()[::-1]
                 x0 = x0[loss_rank]
                 x0[:1] = self.seed
 
             else:
-                # this looks like we instead just start over
+                # without specifying a pattern pool, we train from scratch over and over again. This is experiment 1,
+                # and shows that CA de-stabilize as they move into an uncharted number of episodes
                 x0 = np.repeat(self.seed[None, ...], self.batch_size, 0)
 
             x, loss = self.train_step(x0)
@@ -130,9 +132,9 @@ class CATrainer:
             self.loss_log.append(loss.numpy())
 
             try :
-                if step_i % 10 == 0:
+                if step_i % 20 == 0:
                     generate_pool_figures(self.pool, step_i, self.log_directory)
-                if step_i % 100 == 0:
+                if step_i % 200 == 0:
                     # clear_output()
                     visualize_batch(x0, x, step_i, self.log_directory)
                     plot_loss(self.loss_log, self.log_directory)
@@ -165,12 +167,15 @@ def make_circle_masks(n, h, w):
 
 def load_emoji(emoji):
     code = hex(ord(emoji))[2:].lower()
+    return load_emoji_by_code(code)
+
+def load_emoji_by_code(code):
     url = 'https://github.com/googlefonts/noto-emoji/raw/master/png/128/emoji_u%s.png' % code
     return load_image(url)
 
 
 if __name__ == '__main__':
-    target_img: tf.Tensor = load_emoji("🦎")
+    target_img: np.ndarray = load_emoji("🦎")
     ca_model: CAProtoModel = CAProtoModel()
     # use defaults otherwise
     ca_trainer: CATrainer = CATrainer(model=ca_model, target_img=target_img,
