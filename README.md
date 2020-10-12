@@ -6,7 +6,6 @@
  
 Reproducing [Growing Neural Cellular Automata](https://colab.research.google.com/github/google-research/self-organising-systems/blob/master/notebooks/growing_ca.ipynb#scrollTo=IeWf6HeTe8kM) and attempting new experiments.
 
-1
 **Please Note:** Much of the code in this repository is adapted or literally copied from the original authors work 
 above. (To authors: if this note is insufficient in properly crediting your work, please let me know and I will remedy).
 
