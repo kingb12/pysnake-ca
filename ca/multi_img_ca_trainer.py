@@ -119,20 +119,20 @@ class MultiImgCATrainer:
             self.loss_log.append(loss.numpy())
 
             try:
-                if step_i % 20 == 0:
+                if step_i % 50 == 0:
                     generate_pool_figures(self.pool, step_i, self.log_directory)
                 if step_i % 200 == 0:
                     # clear_output()
                     visualize_batch(x0, x, step_i, self.log_directory)
                     plot_loss(self.loss_log, self.log_directory)
-                    export_model(self.model, self.log_directory + 'train_log/%04d' % step_i)
+                    export_model(self.model, self.log_directory + 'models/%04d' % step_i)
             except BaseException as e:
                 traceback.print_exc()
                 continue
 
             print('\r step: %d, log10(loss): %.3f' % (len(self.loss_log), np.log10(loss)), end='')
 
-    def  random_padded_image(self) -> np.ndarray:
+    def random_padded_image(self) -> np.ndarray:
         """
         return an image as a tensor for a randomly selected emoji. The image will be pre-padded to have height and
         width of target_total_padded_size

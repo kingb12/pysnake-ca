@@ -13,12 +13,12 @@ from typing import List, Tuple
 
 import tensorflow as tf
 from google.protobuf.json_format import MessageToDict
-from tensorflow.python.framework import convert_to_constants
 from tensorflow.keras.layers import BatchNormalization, Conv2D, MaxPooling2D, Dropout, Flatten, Dense, \
     Reshape
 from tensorflow.keras.layers import Layer
+from tensorflow.python.framework import convert_to_constants
 
-from ca.ca_model import CAProtoModel, get_living_mask, DEFAULT_CHANNEL_N, DEFAULT_CELL_FIRE_RATE
+from ca.ca_model import get_living_mask, DEFAULT_CHANNEL_N, DEFAULT_CELL_FIRE_RATE
 from ca.ca_model_components import construct_board_update_rule_model, construct_cell_perception_kernel
 
 
@@ -129,7 +129,7 @@ class MultiImgCAModel(tf.keras.Model):
         # process the images into filters, inserting two 'empty' dimensions to allow each element in filters to be
         # 1x1 conv2d filter (1, 1, c_in, c_out) on the board
         filters: tf.Tensor = self.img_model(images)[:, None, None, ...]
-        assert filters.shape == (x.shape[0], 1, 1, self.board_hidden_channel_n, self.img_channel_n)
+        # assert filters.shape == (x.shape[0], 1, 1, self.board_hidden_channel_n, self.img_channel_n)
 
         # compute a 1x1 batch-wise convolution of our board and our image-based filters: this is how the img model
         # communicates to the update model -- TODO: can we do this with frozen weights from an auto-encoder?
@@ -184,8 +184,12 @@ def export_model(ca: MultiImgCAModel, base_filename: str) -> None:
     ca.save_weights(base_filename)
 
     # TODO: do any of these need adjusting?
+    ca.img_model.save_weights(base_filename + '_img')
+    ca.update_model.save_weights(base_filename + '_upd')
+    ca.save_weights(base_filename + '_all')
     cf = ca.call.get_concrete_function(
         x=tf.TensorSpec([None, None, None, ca.board_channel_n]),
+        images=tf.TensorSpec([None, None, None, 4]),
         fire_rate=tf.constant(0.5),
         angle=tf.constant(0.0),
         step_size=tf.constant(1.0))
