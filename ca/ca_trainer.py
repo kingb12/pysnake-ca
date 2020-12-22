@@ -9,7 +9,7 @@ from overrides import EnforceOverrides
 
 from ca.ca_model import to_rgba, make_seed, CAProtoModel, export_model, load_image
 from ca.ca_sample_pool import SamplePool
-from ca.figure_utils import generate_pool_figures, visualize_batch, plot_loss
+from ca.figure_utils import generate_pool_figures, visualize_batch, plot_loss, populate_intermediate_path
 
 DEFAULT_LEARNING_RATE = 2e-3
 DEFAULT_POOL_SIZE = 1024
@@ -138,7 +138,9 @@ class CATrainer(EnforceOverrides):
                     # clear_output()
                     visualize_batch(x0, x, step_i, self.log_directory)
                     plot_loss(self.loss_log, self.log_directory)
-                    export_model(self.model, self.log_directory + 'model/%04d' % step_i)
+                    file_path: str = self.log_directory + 'models/%04d' % step_i
+                    populate_intermediate_path(file_path)
+                    export_model(self.model, file_path)
             except BaseException as e:
                 traceback.print_exc()
                 continue

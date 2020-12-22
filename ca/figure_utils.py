@@ -1,3 +1,5 @@
+import errno
+import os
 from typing import List
 
 import PIL.Image, PIL.ImageDraw
@@ -14,12 +16,29 @@ def np2pil(a):
     return PIL.Image.fromarray(a)
 
 
+def populate_intermediate_path(path):
+    """
+    Given a string path (e.g. foo/bar/baz.jpg) create all intermediate directories that do not exist in order to write
+    a file to that path.
+
+    :param path:
+    :return:
+    """
+    if not os.path.exists(os.path.dirname(path)):
+        try:
+            os.makedirs(os.path.dirname(path))
+        except OSError as exc:  # Guard against race condition
+            if exc.errno != errno.EEXIST:
+                raise
+
+
 def imwrite(f, a, fmt=None):
     a = np.asarray(a)
     if isinstance(f, str):
         fmt = f.rsplit('.', 1)[-1].lower()
     if fmt == 'jpg':
         fmt = 'jpeg'
+    populate_intermediate_path(f)
     f = open(f, 'wb')
     np2pil(a).save(f, fmt, quality=95)
 
@@ -65,7 +84,9 @@ def plot_loss(loss_log: List[np.ndarray], log_dir: str) -> None:
     plt.figure(figsize=(10, 4))
     plt.title('Loss history (log10)')
     plt.plot(np.log10(loss_log), '.', alpha=0.1)
-    plt.savefig(log_dir + 'loss/loss.png')
+    file_path: str = log_dir + 'loss/loss.png'
+    populate_intermediate_path(file_path)
+    plt.savefig(file_path)
 
 
 def tile2d(a, w=None):
