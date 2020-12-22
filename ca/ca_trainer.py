@@ -131,14 +131,14 @@ class CATrainer(EnforceOverrides):
             step_i: int = len(self.loss_log)
             self.loss_log.append(loss.numpy())
 
-            try :
-                if step_i % 20 == 0:
+            try:
+                if step_i % 50 == 0:
                     generate_pool_figures(self.pool, step_i, self.log_directory)
                 if step_i % 200 == 0:
                     # clear_output()
                     visualize_batch(x0, x, step_i, self.log_directory)
                     plot_loss(self.loss_log, self.log_directory)
-                    export_model(self.model, self.log_directory + 'train_log/%04d' % step_i)
+                    export_model(self.model, self.log_directory + 'model/%04d' % step_i)
             except BaseException as e:
                 traceback.print_exc()
                 continue

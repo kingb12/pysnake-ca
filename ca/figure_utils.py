@@ -34,7 +34,7 @@ def generate_pool_figures(pool: SamplePool, step_i: int, log_dir: str) -> None:
     tiled_pool[:, -72:] += (-tiled_pool[:, -72:] + ones[None, :, None]) * fade[None, ::-1, None]
     tiled_pool[:72, :] += (-tiled_pool[:72, :] + ones[:, None, None]) * fade[:, None, None]
     tiled_pool[-72:, :] += (-tiled_pool[-72:, :] + ones[:, None, None]) * fade[::-1, None, None]
-    imwrite(log_dir + 'train_log/%04d_pool.jpg' % step_i, tiled_pool)
+    imwrite(log_dir + 'pools/%04d_pool.jpg' % step_i, tiled_pool)
 
 
 def visualize_batch(x0, x, step_i: int, log_dir: str):
@@ -52,7 +52,7 @@ def visualize_batch(x0, x, step_i: int, log_dir: str):
     vis0 = np.hstack(to_rgb(x0).numpy())
     vis1 = np.hstack(to_rgb(x).numpy())
     vis = np.vstack([vis0, vis1])
-    imwrite(log_dir + 'train_log/batches_%04d.jpg' % step_i, vis)
+    imwrite(log_dir + 'batches/batches_%04d.jpg' % step_i, vis)
 
 
 def plot_loss(loss_log: List[np.ndarray], log_dir: str) -> None:
@@ -65,7 +65,7 @@ def plot_loss(loss_log: List[np.ndarray], log_dir: str) -> None:
     plt.figure(figsize=(10, 4))
     plt.title('Loss history (log10)')
     plt.plot(np.log10(loss_log), '.', alpha=0.1)
-    plt.savefig(log_dir + 'train_log/loss.png')
+    plt.savefig(log_dir + 'loss/loss.png')
 
 
 def tile2d(a, w=None):
