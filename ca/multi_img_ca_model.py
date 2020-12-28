@@ -1,7 +1,8 @@
 """
-The mission of this prototype is to extend the work described in :cite:`mordvintsev2020growing` to grow dynamic outputs.
-This has challenges in that re-generation can't map to a static state. This prototype will begin with a uselessly small
-version of these dynamics: TODO TBD
+The mission of this prototype is to extend the work described in :cite:`mordvintsev2020growing` to growing new
+structures from image input. The hope is that separating the structure definition as provided by an image and the
+update policy as provided by a CA provides insight into core mechanisms for learning structured growth. Instead of
+training a neural CA against a single initial image, we train against a
 
 NOTE: putting this here b/c I can't think of another place: one thing worth investigating is the cells frame rate vs.
 the rate of change: the automata can only move one step at a time in adhering to the rules, but what if it was evaluated
@@ -12,6 +13,7 @@ import json
 from typing import List, Tuple
 
 import tensorflow as tf
+import tensorflowjs as tfjs
 from google.protobuf.json_format import MessageToDict
 from tensorflow.keras.layers import BatchNormalization, Conv2D, MaxPooling2D, Dropout, Flatten, Dense, \
     Reshape
@@ -137,9 +139,9 @@ class MultiImgCAModel(tf.keras.Model):
         board_hidden_only: tf.Tensor = x[..., 4:]
         # the image aware board is a batch-wise convolution of 1) our image representation & 2) our current hidden state
         img_aware_board: tf.Tensor = tf.concat([
-                board_output_only,
-                batch_wise_convolution(board_hidden_only, filters, dtype=x.dtype)
-            ], axis=-1)
+            board_output_only,
+            batch_wise_convolution(board_hidden_only, filters, dtype=x.dtype)
+        ], axis=-1)
         perceived: tf.Tensor = self.perceive(img_aware_board)
 
         dx: tf.Tensor = self.update_model(perceived)
@@ -206,7 +208,41 @@ def export_model(ca: MultiImgCAModel, base_filename: str) -> None:
         json.dump(model_json, f)
 
 
+def reload_model(base_filename: str) -> MultiImgCAModel:
+    """
+    Reload a model with weights saved at the base file path
+    :param base_filename:
+    :return:
+    """
+    ca: MultiImgCAModel = MultiImgCAModel()
+    ca.load_weights(base_filename)
+    return ca
+
+
+def export_js_model(ca: MultiImgCAModel, save_dir: str) -> None:
+    """
+    Export a MultiImgCAModel in a JS readable format
+
+    :param save_dir: where to save the model
+    :param ca: model to export
+    :return: None
+    """
+    tfjs.converters.save_keras_model(ca.update_model, f"{save_dir}/update_model")
+    tfjs.converters.save_keras_model(ca.img_model, f"{save_dir}/img_model")
+
+
+def load_js_model(save_dir: str) -> MultiImgCAModel:
+    """
+    Import a JS readable MultiImgCAModel
+    :return: loaded MultiImgCAModel
+    """
+    # TODO: don't know if this generalizes to unexpected sizes
+    ca: MultiImgCAModel = MultiImgCAModel()
+    ca.update_model = tfjs.converters.load_keras_model(f"{save_dir}/update_model/model.json",
+                                                       use_unique_name_scope=False)
+    ca.img_model = tfjs.converters.load_keras_model(f"{save_dir}/img_model/model.json", use_unique_name_scope=False)
+    return ca
+
+
 if __name__ == '__main__':
-    model = MultiImgCAModel(2, 2)
-    model.update_model.summary()
-    print("Perception Kernel Shape: ", model.perception_kernel.shape)
+    model = load_js_model('/Users/bking/Downloads')
