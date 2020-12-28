@@ -19,7 +19,7 @@ def construct_board_update_rule_model(channel_n: int, high_dim: int = 128) -> tf
         # second 1x1 convolution projects back down to a cell state size and omits activation
         Conv2D(channel_n, (1, 1), activation=None,
                # second convolution to be initialized with zeros simulates do-nothing behavior by default
-               kernel_initializer=tf.zeros_initializer)
+               kernel_initializer=tf.zeros_initializer())
     ])
 
 
