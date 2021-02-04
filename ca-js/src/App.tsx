@@ -1,26 +1,30 @@
-import React from 'react';
-import logo from './logo.svg';
-import './App.css';
+import React, { Component, RefObject } from "react";
+import { MultiImgCAModel } from "./multi-img-ca";
+import { createGrid } from "./multi-img-ca-grid";
 
-function App() {
-  return (
-    <div className="App">
-      <header className="App-header">
-        <img src={logo} className="App-logo" alt="logo" />
-        <p>
-          Edit <code>src/App.tsx</code> and save to reload.
-        </p>
-        <a
-          className="App-link"
-          href="https://reactjs.org"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          Learn React
-        </a>
-      </header>
-    </div>
-  );
+export class App extends Component {
+  // I don't know why, but we need to declare 'this.mount' for typescript to compile
+  mount: any;
+  targetImage: RefObject<HTMLImageElement>;
+
+  constructor(props: Object) {
+    super(props);
+    // the target image we will grow with CA
+    this.targetImage = React.createRef<HTMLImageElement>();
+  }
+
+  async componentDidMount() {
+    const model: MultiImgCAModel = await MultiImgCAModel.loadModel("model");
+    if (!this.targetImage.current) {
+      console.error("where's my image?");
+    }
+    document.body.appendChild((await createGrid(model, this.targetImage.current as HTMLImageElement, {frameHeight: 200, frameWidth: 200})).view);
+  }
+
+  render() {
+    return <div>
+      <div ref={(mount) => (this.mount = mount)} />
+      <img src="https://github.com/googlefonts/noto-emoji/raw/master/png/128/emoji_u1f36d.png" ref={this.targetImage}/>
+      </div>;
+  }
 }
-
-export default App;
