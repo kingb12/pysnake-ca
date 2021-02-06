@@ -1,6 +1,7 @@
 import React, { Component, RefObject } from "react";
 import { MultiImgCAModel } from "./multi-img-ca";
 import { createGrid } from "./multi-img-ca-grid";
+import { createImgTexture } from "./img-texture";
 
 export class App extends Component {
   // I don't know why, but we need to declare 'this.mount' for typescript to compile
@@ -14,17 +15,18 @@ export class App extends Component {
   }
 
   async componentDidMount() {
-    const model: MultiImgCAModel = await MultiImgCAModel.loadModel("model");
+    //const model: MultiImgCAModel = await MultiImgCAModel.loadModel("model");
     if (!this.targetImage.current) {
       console.error("where's my image?");
     }
-    document.body.appendChild((await createGrid(model, this.targetImage.current as HTMLImageElement, {frameHeight: 200, frameWidth: 200})).view);
+    document.body.appendChild((await createImgTexture(this.targetImage.current as HTMLImageElement, {frameHeight: 200, frameWidth: 200})).view);
+
   }
 
   render() {
     return <div>
       <div ref={(mount) => (this.mount = mount)} />
-      <img src="https://github.com/googlefonts/noto-emoji/raw/master/png/128/emoji_u1f36d.png" ref={this.targetImage}/>
+      <img src="images/emoji_u1f36d.png" ref={this.targetImage}/>
       </div>;
   }
 }

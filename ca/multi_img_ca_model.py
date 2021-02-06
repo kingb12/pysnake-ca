@@ -170,6 +170,7 @@ class MultiImgCAModel(tf.keras.Model):
         x_shape: Tuple[float] = x.shape
         tf.debugging.assert_equal(len(x_shape), 4)
         tf.debugging.assert_equal(x_shape[-1], self.post_img_channel_n)  # verify C, the only known value to the model
+        print(x_shape, self.perception_kernel.shape)
         y = tf.nn.depthwise_conv2d(x, self.perception_kernel, [1, 1, 1, 1], 'SAME')
         tf.debugging.assert_shapes([(y, (x_shape[0], x_shape[1], x_shape[2], self.post_img_channel_n * 3))])
         return y
